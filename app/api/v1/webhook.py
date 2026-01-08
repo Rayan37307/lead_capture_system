@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Request, BackgroundTasks
 from app.services.whatsapp_service import WhatsAppService
 from app.services.instagram_service import InstagramService
 from app.config.settings import settings
-from app.utils.security import verify_signature
+from app.models.lead import PyObjectId # Import PyObjectId
 
 
 router = APIRouter()
@@ -10,8 +10,8 @@ whatsapp_service = WhatsAppService()
 instagram_service = InstagramService()
 
 
-@router.post("/whatsapp")
-async def whatsapp_webhook(request: Request):
+@router.post("/whatsapp/{tenant_id}")
+async def whatsapp_webhook(tenant_id: PyObjectId, request: Request):
     """Handle WhatsApp webhook"""
     payload = await request.json()
     
@@ -21,14 +21,15 @@ async def whatsapp_webhook(request: Request):
     #     raise HTTPException(status_code=403, detail="Invalid signature")
     
     try:
-        result = await whatsapp_service.process_webhook_payload(payload)
+        # Pass tenant_id to the service for processing
+        result = await whatsapp_service.process_webhook_payload(payload, tenant_id)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing WhatsApp webhook: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing WhatsApp webhook for tenant {tenant_id}: {str(e)}")
 
 
-@router.post("/instagram")
-async def instagram_webhook(request: Request):
+@router.post("/instagram/{tenant_id}")
+async def instagram_webhook(tenant_id: PyObjectId, request: Request):
     """Handle Instagram webhook"""
     payload = await request.json()
     
@@ -38,51 +39,43 @@ async def instagram_webhook(request: Request):
     #     raise HTTPException(status_code=403, detail="Invalid signature")
     
     try:
-        result = await instagram_service.process_webhook_payload(payload)
+        # Pass tenant_id to the service for processing
+        result = await instagram_service.process_webhook_payload(payload, tenant_id)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing Instagram webhook: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing Instagram webhook for tenant {tenant_id}: {str(e)}")
 
 
-@router.get("/whatsapp")
+@router.get("/whatsapp/{tenant_id}")
 async def verify_whatsapp_webhook(
+    tenant_id: PyObjectId,
     hub_verify_token: str = None,
     hub_challenge: str = None
 ):
     """Verify WhatsApp webhook"""
+    # In a multi-tenant setup, WHATSAPP_WEBHOOK_VERIFY_TOKEN should be tenant-specific
+    # For now, we use a global token from settings or assume it's part of the tenant's config
     if hub_verify_token == settings.WHATSAPP_WEBHOOK_VERIFY_TOKEN:
         return hub_challenge
     else:
-        raise HTTPException(status_code=403, detail="Invalid verification token")
+        raise HTTPException(status_code=403, detail="Invalid verification token for tenant " + str(tenant_id))
 
 
-@router.get("/instagram")
+@router.get("/instagram/{tenant_id}")
 async def verify_instagram_webhook(
+    tenant_id: PyObjectId,
     hub_verify_token: str = None,
     hub_challenge: str = None
 ):
     """Verify Instagram webhook"""
+    # In a multi-tenant setup, INSTAGRAM_WEBHOOK_VERIFY_TOKEN should be tenant-specific
+    # For now, we use a global token from settings or assume it's part of the tenant's config
     if hub_verify_token == settings.INSTAGRAM_WEBHOOK_VERIFY_TOKEN:
         return hub_challenge
     else:
-        raise HTTPException(status_code=403, detail="Invalid verification token")
+        raise HTTPException(status_code=403, detail="Invalid verification token for tenant " + str(tenant_id))
 
 
-@router.post("/website")
-async def website_webhook(request: Request):
-    """Handle website chat webhook"""
-    payload = await request.json()
-    
-    # Process website chat message
-    # This would typically come from your Next.js frontend
-    message = payload.get("message")
-    user_id = payload.get("user_id")
-    
-    if not message or not user_id:
-        raise HTTPException(status_code=400, detail="Message and user_id are required")
-    
-    # In a real implementation, you would process the website chat message
-    # similar to how WhatsApp and Instagram messages are processed
-    # For now, we'll return a placeholder response
-    
-    return {"status": "received", "message": "Website message received"}
+# The website_webhook is redundant if the chat widget directly calls /chat/respond.
+# If there's a need for a generic website webhook that then routes to /chat/respond,
+# it would be re-implemented here. For now, it is removed.

@@ -27,14 +27,22 @@ class WorkflowService:
         """Handle new lead created event"""
         logger.info("--- _handle_lead_created started ---")
         # Send notification about new lead
-        await self.notification_service.notify_new_lead(data)
+        tenant_id = data.get("tenant_id") # Extract tenant_id from lead data
+        if tenant_id:
+            await self.notification_service.notify_new_lead(data, tenant_id)
+        else:
+            logger.warning("Tenant ID not found in lead data for notify_new_lead.")
         logger.info("--- _handle_lead_created finished ---")
 
     async def _handle_hot_lead(self, data: Dict[str, Any]):
         """Handle hot lead event"""
         logger.info("--- _handle_hot_lead started ---")
         # Send urgent notification about hot lead
-        await self.notification_service.notify_hot_lead(data)
+        tenant_id = data.get("tenant_id") # Extract tenant_id from lead data
+        if tenant_id:
+            await self.notification_service.notify_hot_lead(data, tenant_id)
+        else:
+            logger.warning("Tenant ID not found in lead data for notify_hot_lead.")
         logger.info("--- _handle_hot_lead finished ---")
     async def _handle_new_message(self, data: Dict[str, Any]):
         """Handle new message event"""

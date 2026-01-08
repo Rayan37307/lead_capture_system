@@ -1,26 +1,68 @@
-import hashlib
-import hmac
+from datetime import datetime, timedelta
+from typing import Optional
+
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+
+from app.models.user import User
+from app.database.mongodb import get_database
 from app.config.settings import settings
 
 
-def verify_signature(payload: str, signature: str) -> bool:
-    """
-    Verify webhook signature using HMAC
-    This is a generic function - you might need to adapt it for specific services
-    """
+# Define the OAuth2 scheme
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=settings.API_V1_STR + "/auth/token")
+
+# Password hashing context
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a plain password against a hashed password."""
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+def get_password_hash(password: str) -> str:
+    """Generate a hash for the given password."""
+    return pwd_context.hash(password)
+
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """Create a JWT access token."""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)  # Default 15 minutes
+
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return encoded_jwt
+
+
+async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
-        expected_signature = hmac.new(
-            settings.SECRET_KEY.encode('utf-8'),
-            payload.encode('utf-8'),
-            hashlib.sha256
-        ).hexdigest()
-        
-        # Compare signatures
-        return hmac.compare_digest(f"sha256={expected_signature}", signature)
-    except Exception:
-        return False
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        email: str = payload.get("sub")
+        tenant_id: str = payload.get("tenant_id")  # Extract tenant_id from token
+        if email is None or tenant_id is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    db = await get_database()
+    user_dict = await db.users.find_one({"email": email, "tenant_id": tenant_id})  # Query with tenant_id
+    if user_dict is None:
+        raise credentials_exception
+    return User(**user_dict)
 
 
-def verify_api_key(api_key: str) -> bool:
-    """Verify API key"""
-    return api_key == settings.API_KEY
+# These constants were previously defined in the main module
+SECRET_KEY = settings.SECRET_KEY
+ALGORITHM = settings.ALGORITHM

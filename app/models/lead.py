@@ -38,6 +38,7 @@ class Message(BaseModel):
 
 
 class LeadBase(BaseModel):
+    tenant_id: PyObjectId = Field(default_factory=PyObjectId)
     name: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
@@ -50,6 +51,7 @@ class LeadBase(BaseModel):
 
 class Lead(LeadBase):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    tenant_id: PyObjectId
     name: str
     email: str
     phone: str

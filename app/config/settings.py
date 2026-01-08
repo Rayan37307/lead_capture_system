@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     INSTAGRAM_WEBHOOK_VERIFY_TOKEN: str
     INSTAGRAM_ACCESS_TOKEN: str
 
+    # Facebook Messenger settings
+    FB_PAGE_ACCESS_TOKEN: str
+    FB_APP_SECRET: str
+    FB_WEBHOOK_VERIFY_TOKEN: str
+
     # Notification settings
     SMTP_SERVER: str = "smtp.gmail.com"
     SMTP_PORT: int = 587

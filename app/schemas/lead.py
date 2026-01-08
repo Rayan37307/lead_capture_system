@@ -1,6 +1,6 @@
 from typing import List, Optional
 from pydantic import BaseModel
-from app.models.lead import LeadBase, Message
+from app.models.lead import LeadBase, Message, PyObjectId
 
 
 class WebhookPayload(BaseModel):
@@ -12,6 +12,7 @@ class ChatRequest(BaseModel):
     message: str
     user_id: str
     source: str  # website, whatsapp, instagram
+    tenant_id: PyObjectId # Added tenant_id
 
 
 class ChatResponse(BaseModel):

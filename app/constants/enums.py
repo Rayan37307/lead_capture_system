@@ -5,6 +5,7 @@ class LeadSource(str, Enum):
     WEBSITE = "website"
     WHATSAPP = "whatsapp"
     INSTAGRAM = "instagram"
+    FACEBOOK = "facebook"
 
 
 class LeadIntent(str, Enum):

@@ -1,0 +1,3 @@
+FB_PAGE_ACCESS_TOKEN: Your Facebook Page Access Token can be generated from your Facebook Developer Dashboard. In your app's settings, navigate to 'Messenger' -> 'Settings', find the 'Access Tokens' section, select your Facebook Page, and click 'Generate Token'. (Refer to Section 3.6 of FACEBOOK_MESSENGER_INTEGRATION_GUIDE.md)
+FB_APP_SECRET: Your Facebook App Secret can be found in your Facebook Developer Dashboard. Go to your app, then navigate to 'Settings' -> 'Basic'. The 'App Secret' will be listed there.
+FB_WEBHOOK_VERIFY_TOKEN: This is a string you define yourself during the webhook setup process in the Facebook Developer Dashboard. It's used to verify that incoming webhook requests are legitimate. (Refer to Section 3.5 of FACEBOOK_MESSENGER_INTEGRATION_GUIDE.md)
