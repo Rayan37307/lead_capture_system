@@ -48,7 +48,7 @@ async def verify_webhook(tenant_id: str, request: Request):
         # Check if the verification token matches
         if hub_verify_token == settings.FB_WEBHOOK_VERIFY_TOKEN:
             logger.info(f"Webhook verified for tenant: {tenant_id}")
-            return JSONResponse(content=int(hub_challenge))
+            return JSONResponse(content=hub_challenge)
         else:
             logger.error(f"Webhook verification failed for tenant: {tenant_id}")
             raise HTTPException(status_code=403, detail="Forbidden")
