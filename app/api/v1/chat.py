@@ -78,11 +78,18 @@ async def chat_respond(chat_request: ChatRequest):
 
         logger.info("Generating AI response...")
 
+        # Create user context with tenant_id for product search
+        user_context = {
+            "tenant_id": chat_request.tenant_id
+        }
+
         ai_response = await ai_service.generate_response(
 
             chat_request.message,
 
-            lead.messages if lead.messages else []
+            lead.messages if lead.messages else [],
+
+            user_context=user_context
 
         )
 

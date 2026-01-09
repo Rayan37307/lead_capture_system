@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import webhook, chat, lead, analytics, auth, messenger # Import auth and messenger routers
+from app.api.v1 import webhook, chat, lead, analytics, auth, messenger, product_search # Import auth and messenger routers
 from app.config.settings import settings
 
 
@@ -27,6 +27,7 @@ app.include_router(lead.router, prefix=settings.API_V1_STR + "/lead", tags=["lea
 app.include_router(analytics.router, prefix=settings.API_V1_STR + "/analytics", tags=["analytics"])
 app.include_router(auth.router, prefix=settings.API_V1_STR + "/auth", tags=["auth"]) # Add auth router
 app.include_router(messenger.router, prefix=settings.API_V1_STR + "/messenger", tags=["messenger"]) # Add messenger router
+app.include_router(product_search.router, prefix=settings.API_V1_STR + "/product_search", tags=["product_search"]) # Add product search router
 
 @app.get("/")
 async def root():
