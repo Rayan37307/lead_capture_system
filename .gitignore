@@ -61,3 +61,6 @@ dmypy.json
 # Specific to this project
 facebook_env_vars_explanation.txt # This might contain sensitive information
 tenantids.txt # This likely contains sensitive tenant IDs
+
+# Tenant-specific data
+tenant_data/

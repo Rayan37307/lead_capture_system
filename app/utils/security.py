@@ -7,7 +7,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from app.models.user import User
-from app.database.mongodb import get_database
+from app.database import sqlite_handler
 from app.config.settings import settings
 
 
@@ -56,11 +56,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     except JWTError:
         raise credentials_exception
 
-    db = await get_database()
-    user_dict = await db.users.find_one({"email": email, "tenant_id": tenant_id})  # Query with tenant_id
+    user_dict = await sqlite_handler.get_user_by_email(tenant_id=tenant_id, email=email)
     if user_dict is None:
         raise credentials_exception
-    return User(**user_dict)
+    return User.model_validate(user_dict)
 
 
 # These constants were previously defined in the main module

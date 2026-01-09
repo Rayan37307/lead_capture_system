@@ -2,7 +2,7 @@ from typing import Dict, Any
 from app.services.ai_service import AIService
 from app.services.lead_service import LeadService
 from app.constants.enums import LeadSource
-from app.models.lead import LeadCreate, PyObjectId # Import PyObjectId
+from app.models.lead import LeadCreate
 
 
 class WhatsAppService:
@@ -10,7 +10,7 @@ class WhatsAppService:
         self.ai_service = AIService()
         self.lead_service = LeadService()
 
-    async def process_webhook_payload(self, payload: Dict[str, Any], tenant_id: PyObjectId) -> Dict[str, str]:
+    async def process_webhook_payload(self, payload: Dict[str, Any], tenant_id: str) -> Dict[str, str]:
         """Process incoming WhatsApp webhook payload"""
         for entry in payload.get("entry", []):
             for change in entry.get("changes", []):
@@ -23,7 +23,7 @@ class WhatsAppService:
         
         return {"status": "processed"}
 
-    async def _handle_text_message(self, message: Dict[str, Any], value: Dict[str, Any], tenant_id: PyObjectId) -> Dict[str, str]:
+    async def _handle_text_message(self, message: Dict[str, Any], value: Dict[str, Any], tenant_id: str) -> Dict[str, str]:
         """Handle incoming text message"""
         phone_number = message["from"]
         text = message["text"]["body"]

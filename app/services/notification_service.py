@@ -5,7 +5,6 @@ from email.mime.multipart import MIMEMultipart
 from twilio.rest import Client
 from app.config.settings import settings
 from typing import List, Dict, Any
-from app.models.lead import PyObjectId # Import PyObjectId
 
 
 import logging
@@ -80,7 +79,7 @@ class NotificationService:
         logger.info("--- send_whatsapp_notification finished ---")
 
 
-    async def notify_new_lead(self, lead_data: Dict[str, Any], tenant_id: PyObjectId):
+    async def notify_new_lead(self, lead_data: Dict[str, Any], tenant_id: str):
         """Send notification for new lead"""
         logger.info(f"--- notify_new_lead started for tenant_id: {tenant_id} ---")
         subject = "New Lead Captured"
@@ -105,7 +104,7 @@ class NotificationService:
         logger.info("--- notify_new_lead finished ---")
 
 
-    async def notify_hot_lead(self, lead_data: Dict[str, Any], tenant_id: PyObjectId):
+    async def notify_hot_lead(self, lead_data: Dict[str, Any], tenant_id: str):
         """Send urgent notification for hot lead"""
         logger.info(f"--- notify_hot_lead started for tenant_id: {tenant_id} ---")
         subject = "🚨 HOT LEAD ALERT! 🚨"

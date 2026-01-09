@@ -2,7 +2,7 @@ from typing import Dict, Any
 from app.services.ai_service import AIService
 from app.services.lead_service import LeadService
 from app.constants.enums import LeadSource
-from app.models.lead import LeadCreate, PyObjectId # Import PyObjectId
+from app.models.lead import LeadCreate
 
 
 class InstagramService:
@@ -10,7 +10,7 @@ class InstagramService:
         self.ai_service = AIService()
         self.lead_service = LeadService()
 
-    async def process_webhook_payload(self, payload: Dict[str, Any], tenant_id: PyObjectId) -> Dict[str, str]:
+    async def process_webhook_payload(self, payload: Dict[str, Any], tenant_id: str) -> Dict[str, str]:
         """Process incoming Instagram webhook payload"""
         for entry in payload.get("entry", []):
             messaging_events = entry.get("messaging", [])
@@ -21,7 +21,7 @@ class InstagramService:
         
         return {"status": "processed"}
 
-    async def _handle_text_message(self, event: Dict[str, Any], tenant_id: PyObjectId) -> Dict[str, str]:
+    async def _handle_text_message(self, event: Dict[str, Any], tenant_id: str) -> Dict[str, str]:
         """Handle incoming text message from Instagram"""
         sender_id = event["sender"]["id"]
         text = event["message"]["text"]
@@ -39,13 +39,12 @@ class InstagramService:
         if not lead:
             # Create new lead with tenant_id
             lead_data = LeadCreate(
-                tenant_id=tenant_id,
                 name=user_name,
                 email="",  # We'll update this later when we get the email
                 phone="",  # We'll update this later when we get the phone
                 source=LeadSource.INSTAGRAM
             )
-            lead = await self.lead_service.create_lead(lead_data)
+            lead = await self.lead_service.create_lead(lead_data, tenant_id)
         
         # Add the message to the lead's conversation history
         await self.lead_service.add_message_to_lead(str(lead.id), text, "user", tenant_id)

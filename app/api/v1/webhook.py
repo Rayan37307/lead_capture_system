@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException, Request, BackgroundTasks
 from app.services.whatsapp_service import WhatsAppService
 from app.services.instagram_service import InstagramService
 from app.config.settings import settings
-from app.models.lead import PyObjectId # Import PyObjectId
 
 
 router = APIRouter()
@@ -11,7 +10,7 @@ instagram_service = InstagramService()
 
 
 @router.post("/whatsapp/{tenant_id}")
-async def whatsapp_webhook(tenant_id: PyObjectId, request: Request):
+async def whatsapp_webhook(tenant_id: str, request: Request):
     """Handle WhatsApp webhook"""
     payload = await request.json()
     
@@ -29,7 +28,7 @@ async def whatsapp_webhook(tenant_id: PyObjectId, request: Request):
 
 
 @router.post("/instagram/{tenant_id}")
-async def instagram_webhook(tenant_id: PyObjectId, request: Request):
+async def instagram_webhook(tenant_id: str, request: Request):
     """Handle Instagram webhook"""
     payload = await request.json()
     
@@ -48,7 +47,7 @@ async def instagram_webhook(tenant_id: PyObjectId, request: Request):
 
 @router.get("/whatsapp/{tenant_id}")
 async def verify_whatsapp_webhook(
-    tenant_id: PyObjectId,
+    tenant_id: str,
     hub_verify_token: str = None,
     hub_challenge: str = None
 ):
@@ -63,7 +62,7 @@ async def verify_whatsapp_webhook(
 
 @router.get("/instagram/{tenant_id}")
 async def verify_instagram_webhook(
-    tenant_id: PyObjectId,
+    tenant_id: str,
     hub_verify_token: str = None,
     hub_challenge: str = None
 ):

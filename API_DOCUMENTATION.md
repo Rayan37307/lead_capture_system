@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Lead Capture System is a Python-based system built with FastAPI that enables capturing and automating leads from multiple channels (Website, WhatsApp, Instagram). It features an AI-powered assistant that can engage with users, track conversations, and classify leads by intent (hot, warm, cold). It now supports multi-tenancy, allowing for secure data isolation between different clients.
+The Lead Capture System is a Python-based system built with FastAPI that enables capturing and automating leads from multiple channels (Website, WhatsApp, Instagram). It features an AI-powered assistant that can engage with users, track conversations, and classify leads by intent (hot, warm, cold). It now supports multi-tenancy, allowing for secure data isolation between different clients, leveraging **SQLite** as its database technology.
 
 ## Base URL
 
@@ -20,21 +20,16 @@ Most endpoints (Lead Management, Analytics) require **JWT Bearer Token** authent
         ```bash
         curl -X POST http://localhost:8000/api/v1/auth/register \
           -H "Content-Type: application/json" \
-          -d 
-            {
-              "email": "user@example.com",
-              "password": "securepassword",
-              "tenant_id": "YOUR_TENANT_ID"
-            }
+          -d '{"email": "user@example.com", "password": "securepassword", "tenant_id": "YOUR_TENANT_ID"}'
         ```
 
-2.  **Log In and Get Token:** Use the registered credentials to obtain a JWT access token.
+2.  **Log In and Get Token:** Use the registered credentials to obtain a JWT access token. **Note: `tenant_id` is now required for login.**
     *   **Endpoint:** `POST /api/v1/auth/token`
     *   **Example Request:**
         ```bash
         curl -X POST http://localhost:8000/api/v1/auth/token \
           -H "Content-Type: application/x-www-form-urlencoded" \
-          -d "username=user@example.com&password=securepassword"
+          -d "username=user@example.com&password=securepassword&tenant_id=YOUR_TENANT_ID"
         ```
 
 Once you have the `access_token`, include it in the `Authorization` header for protected endpoints:
@@ -67,12 +62,7 @@ Register a new user associated with a tenant.
 ```bash
 curl -X POST http://localhost:8000/api/v1/auth/register \
   -H "Content-Type: application/json" \
-  -d 
-    {
-      "email": "user@example.com",
-      "password": "securepassword",
-      "tenant_id": "YOUR_TENANT_ID_HERE"
-    }
+  -d '{"email": "user@example.com", "password": "securepassword", "tenant_id": "YOUR_TENANT_ID_HERE"}'
 ```
 
 #### POST `/api/v1/auth/token`
@@ -80,14 +70,14 @@ Obtain a JWT access token for an existing user.
 
 **Request Body (x-www-form-urlencoded):**
 ```
-username=user@example.com&password=securepassword
+username=user@example.com&password=securepassword&tenant_id=YOUR_TENANT_ID
 ```
 
 **Example Request:**
 ```bash
 curl -X POST http://localhost:8000/api/v1/auth/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=user@example.com&password=securepassword"
+  -d "username=user@example.com&password=securepassword&tenant_id=YOUR_TENANT_ID"
 ```
 
 ### Chat Endpoints
@@ -110,13 +100,7 @@ Generate an AI response for a chat message. Requires `tenant_id` in the request 
 ```bash
 curl -X POST http://localhost:8000/api/v1/chat/respond \
   -H "Content-Type: application/json" \
-  -d 
-    {
-      "message": "I am interested in your product",
-      "user_id": "web_user_12345",
-      "source": "website",
-      "tenant_id": "YOUR_TENANT_ID_HERE"
-    }
+  -d '{"message": "I am interested in your product", "user_id": "web_user_12345", "source": "website", "tenant_id": "YOUR_TENANT_ID_HERE"}'
 ```
 
 ### Lead Management Endpoints
@@ -144,20 +128,12 @@ Create a new lead. The `tenant_id` in the payload must match the authenticated u
 curl -X POST http://localhost:8000/api/v1/lead/ \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  -d 
-    {
-      "name": "Test Lead",
-      "email": "test@example.com",
-      "phone": "+1234567890",
-      "source": "website",
-      "intent": "WARM",
-      "tenant_id": "YOUR_TENANT_ID_HERE"
-    }
+  -d '{"name": "Test Lead", "email": "test@example.com", "phone": "+1234567890", "source": "website", "intent": "WARM", "tenant_id": "YOUR_TENANT_ID_HERE"}'
 ```
 
 #### GET `/api/v1/lead/{lead_id}`
 
-Get a lead by ID. Requires JWT authentication. Only retrieves leads belonging to the authenticated user's `tenant_id`.
+Get a lead by ID. Requires JWT authentication. Only retrieves leads belonging to the authenticated user\'s `tenant_id`.
 
 **Example Request:**
 ```bash
@@ -167,7 +143,7 @@ curl -X GET http://localhost:8000/api/v1/lead/YOUR_LEAD_ID \
 
 #### GET `/api/v1/lead/`
 
-Get all leads for the authenticated user's `tenant_id`. Requires JWT authentication.
+Get all leads for the authenticated user\'s `tenant_id`. Requires JWT authentication.
 
 **Example Request:**
 ```bash
@@ -177,7 +153,7 @@ curl -X GET http://localhost:8000/api/v1/lead/ \
 
 #### GET `/api/v1/lead/source/{source}`
 
-Get leads by source for the authenticated user's `tenant_id`. Requires JWT authentication.
+Get leads by source for the authenticated user\'s `tenant_id`. Requires JWT authentication.
 
 **Example Request:**
 ```bash
@@ -187,7 +163,7 @@ curl -X GET http://localhost:8000/api/v1/lead/source/website \
 
 #### GET `/api/v1/lead/intent/{intent}`
 
-Get leads by intent for the authenticated user's `tenant_id`. Requires JWT authentication.
+Get leads by intent for the authenticated user\'s `tenant_id`. Requires JWT authentication.
 
 **Example Request:**
 ```bash
@@ -208,7 +184,7 @@ Handle incoming WhatsApp messages via webhook for a specific tenant.
 # The payload is defined by WhatsApp Cloud API
 curl -X POST http://localhost:8000/api/v1/webhook/whatsapp/YOUR_TENANT_ID \
   -H "Content-Type: application/json" \
-  -d '{"object":"whatsapp_business_account","entry":[...]}'
+  -d '{"object":"whatsapp_business_account","entry":[...] }'
 ```
 
 #### GET `/api/v1/webhook/whatsapp/{tenant_id}`
@@ -229,7 +205,7 @@ Handle incoming Instagram messages via webhook for a specific tenant.
 # The payload is defined by Instagram Messaging API
 curl -X POST http://localhost:8000/api/v1/webhook/instagram/YOUR_TENANT_ID \
   -H "Content-Type: application/json" \
-  -d '{"object":"instagram","entry":[...]}'
+  -d '{"object":"instagram","entry":[...] }'
 ```
 
 #### GET `/api/v1/webhook/instagram/{tenant_id}`
@@ -251,7 +227,7 @@ Handle incoming Facebook Messenger messages via webhook for a specific tenant.
 curl -X POST http://localhost:8000/api/v1/messenger/YOUR_TENANT_ID \
   -H "Content-Type: application/json" \
   -H "X-Hub-Signature: sha1=signature_hash" \
-  -d '{"object":"page","entry":[...]}'
+  -d '{"object":"page","entry":[...] }'
 ```
 
 #### GET `/api/v1/messenger/{tenant_id}`
@@ -269,7 +245,7 @@ All Analytics endpoints require JWT authentication.
 
 #### GET `/api/v1/analytics/summary`
 
-Get analytics summary for leads and conversations belonging to the authenticated user's `tenant_id`.
+Get analytics summary for leads and conversations belonging to the authenticated user\'s `tenant_id`.
 
 **Example Request:**
 ```bash
@@ -278,7 +254,7 @@ curl -X GET http://localhost:8000/api/v1/analytics/summary \
 ```
 
 #### GET `/api/v1/analytics/detailed`
-Get detailed analytics for the authenticated user's `tenant_id`. Requires JWT authentication.
+Get detailed analytics for the authenticated user\'s `tenant_id`. Requires JWT authentication.
 
 **Example Request:**
 ```bash
@@ -332,10 +308,6 @@ curl http://localhost:8000/health
 The system requires the following environment variables:
 
 ```env
-# Database settings
-MONGODB_URL=mongodb://localhost:27017
-MONGODB_DB_NAME=lead_capture_db
-
 # AI settings
 AI_PROVIDER=gemini  # openai, openrouter, gemini
 OPENAI_API_KEY=your_openai_api_key_here
@@ -384,10 +356,11 @@ async function registerUser(email, password, tenantId) {
   return response.json();
 }
 
-async function loginUser(email, password) {
+async function loginUser(email, password, tenantId) { // tenantId added
   const params = new URLSearchParams();
   params.append('username', email);
   params.append('password', password);
+  params.append('tenant_id', tenantId); // tenant_id added
 
   const response = await fetch('http://localhost:8000/api/v1/auth/token', {
     method: 'POST',
@@ -462,15 +435,16 @@ def register_user(email, password, tenant_id):
     response.raise_for_status()
     return response.json()
 
-def login_user(email, password):
+def login_user(email, password, tenant_id): # tenant_id added
     url = f"{BASE_URL}/auth/token"
     payload = {
         "username": email,
-        "password": password
+        "password": password,
+        "tenant_id": tenant_id # tenant_id added
     }
     response = requests.post(url, data=payload)
     response.raise_for_status()
-    return response.json() # Returns {'access_token': '...', 'token_type': 'bearer'}
+    return response.json() # Returns {{'access_token': '...', 'token_type': 'bearer'}}
 ```
 
 **2. Send a Chat Message (Tenant-aware)**
