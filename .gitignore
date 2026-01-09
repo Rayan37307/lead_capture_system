@@ -1,2 +1,63 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+dist/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Editors
+.vscode/
+.idea/
+
+# Environments
 .env
-__pycache__
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Project specific files
+*.log
+*.sqlite3
+*.db
+/htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+
+# Jupyter Notebook files
+.ipynb_checkpoints
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Docker
+# Dockerfiles and docker-compose.yml are often committed, but build context might need ignoring
+# .dockerignore can be used for that, but if there are specific local docker build outputs
+# that should not be committed, add them here.
+# For now, assuming docker-compose.yml and Dockerfile are meant to be committed.
+
+# Specific to this project
+facebook_env_vars_explanation.txt # This might contain sensitive information
+tenantids.txt # This likely contains sensitive tenant IDs
