@@ -35,8 +35,8 @@ def verify_webhook_signature(payload: bytes, signature: str) -> bool:
     return hmac.compare_digest(signature, expected_header)
 
 
-@router.get("/messenger/{tenant_id}")
-async def verify_webhook(tenant_id: str, request: Request):
+@router.get("/")
+async def verify_webhook(request: Request):
     """
     Verify the webhook with Facebook
     """
@@ -44,23 +44,23 @@ async def verify_webhook(tenant_id: str, request: Request):
         # Get the verification parameters
         hub_verify_token = request.query_params.get("hub.verify_token")
         hub_challenge = request.query_params.get("hub.challenge")
-        
+
         # Check if the verification token matches
         if hub_verify_token == settings.FB_WEBHOOK_VERIFY_TOKEN:
-            logger.info(f"Webhook verified for tenant: {tenant_id}")
+            logger.info("Webhook verified")
             return JSONResponse(content=hub_challenge)
         else:
-            logger.error(f"Webhook verification failed for tenant: {tenant_id}")
+            logger.error("Webhook verification failed")
             raise HTTPException(status_code=403, detail="Forbidden")
     except Exception as e:
         logger.error(f"Error during webhook verification: {e}")
         raise HTTPException(status_code=500, detail="Verification error")
 
 
-@router.post("/messenger/{tenant_id}")
-async def handle_messenger_webhook(tenant_id: str, request: Request, background_tasks: BackgroundTasks):
+@router.post("/{tenant_id}")
+async def handle_messenger_webhook_with_tenant(tenant_id: str, request: Request, background_tasks: BackgroundTasks):
     """
-    Handle incoming messages from Facebook Messenger
+    Handle incoming messages from Facebook Messenger with tenant_id in path
     """
     try:
         # Get the signature from the request header
@@ -73,11 +73,11 @@ async def handle_messenger_webhook(tenant_id: str, request: Request, background_
             if not verify_webhook_signature(body, signature):
                 logger.error("Invalid signature")
                 raise HTTPException(status_code=403, detail="Forbidden")
-        
+
         # Parse the request body
         payload = await request.json()
         logger.info(f"Received Messenger payload for tenant {tenant_id}: {payload}")
-        
+
         # Process the messaging events
         for entry in payload.get("entry", []):
             for messaging_event in entry.get("messaging", []):
@@ -86,9 +86,9 @@ async def handle_messenger_webhook(tenant_id: str, request: Request, background_
                     # Extract message details
                     sender_id = messaging_event["sender"]["id"]
                     message_text = messaging_event["message"]["text"]
-                    
+
                     logger.info(f"Processing message from {sender_id}: {message_text}")
-                    
+
                     # Process the message in the background
                     background_tasks.add_task(
                         process_messenger_message,
@@ -96,13 +96,105 @@ async def handle_messenger_webhook(tenant_id: str, request: Request, background_
                         sender_id,
                         message_text
                     )
-        
+
         # Return a success response
         return JSONResponse(content={"status": "success"})
-    
+
     except Exception as e:
         logger.error(f"Error handling Messenger webhook: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error processing Messenger webhook: {str(e)}")
+
+
+@router.post("/")
+async def handle_messenger_webhook_auto_tenant(request: Request, background_tasks: BackgroundTasks):
+    """
+    Handle incoming messages from Facebook Messenger, auto-detect tenant from page ID
+    """
+    try:
+        # Get the signature from the request header
+        signature = request.headers.get("X-Hub-Signature")
+        if not signature and settings.FB_APP_SECRET:
+            logger.warning("No signature provided, skipping verification")
+        elif signature and settings.FB_APP_SECRET:
+            # Verify the signature
+            body = await request.body()
+            if not verify_webhook_signature(body, signature):
+                logger.error("Invalid signature")
+                raise HTTPException(status_code=403, detail="Forbidden")
+
+        # Parse the request body
+        payload = await request.json()
+        logger.info(f"Received Messenger payload: {payload}")
+
+        # Determine tenant based on page ID (you'll need to map page IDs to tenant IDs)
+        # For now, we'll need a mapping or a default tenant
+        # This is where you'd implement your tenant resolution logic
+        # For this example, we'll use a default tenant or derive from page ID
+
+        # Extract page ID to determine tenant
+        for entry in payload.get("entry", []):
+            page_id = entry.get("id")  # This is the page ID
+            if not page_id:
+                logger.error("No page ID found in entry")
+                continue
+
+            # Here you would map page_id to tenant_id
+            # For now, using a placeholder - you'd implement your own mapping
+            tenant_id = await get_tenant_for_page(page_id)
+            if not tenant_id:
+                logger.error(f"No tenant found for page ID: {page_id}")
+                continue
+
+            for messaging_event in entry.get("messaging", []):
+                # Handle different types of messaging events
+                if "message" in messaging_event and "text" in messaging_event["message"]:
+                    # Extract message details
+                    sender_id = messaging_event["sender"]["id"]
+                    message_text = messaging_event["message"]["text"]
+
+                    logger.info(f"Processing message from {sender_id}: {message_text}")
+
+                    # Process the message in the background
+                    background_tasks.add_task(
+                        process_messenger_message,
+                        tenant_id,
+                        sender_id,
+                        message_text
+                    )
+
+        # Return a success response
+        return JSONResponse(content={"status": "success"})
+
+    except Exception as e:
+        logger.error(f"Error handling Messenger webhook: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error processing Messenger webhook: {str(e)}")
+
+
+async def get_tenant_for_page(page_id: str) -> str:
+    """
+    Map a Facebook page ID to a tenant ID.
+    This is a placeholder implementation - you'll need to implement your own mapping.
+    """
+    # This is where you'd implement your tenant resolution logic
+    # For example, you could have a database table mapping page IDs to tenant IDs
+    # Or use environment variables, etc.
+
+    # Placeholder mapping - you should implement your own logic
+    page_to_tenant_mapping = {
+        # "facebook_page_id": "tenant_id"
+        # Add your mappings here
+    }
+
+    # Check if there's a specific mapping for this page
+    tenant_id = page_to_tenant_mapping.get(page_id)
+    if tenant_id:
+        return tenant_id
+
+    # If no specific mapping found, you could return a default tenant
+    # Or you could implement other fallback logic
+    # For now, return None to indicate no mapping found
+    # In a real implementation, you'd have your own mapping logic
+    return None
 
 
 async def process_messenger_message(tenant_id: str, sender_id: str, message_text: str):
@@ -138,9 +230,16 @@ async def process_messenger_message(tenant_id: str, sender_id: str, message_text
         
         # Generate AI response
         logger.info("Generating AI response...")
+
+        # Create user context with tenant_id for product search
+        user_context = {
+            "tenant_id": tenant_id
+        }
+
         ai_response = await ai_service.generate_response(
             chat_request.message,
-            lead.messages if lead.messages else []
+            lead.messages if lead.messages else [],
+            user_context=user_context
         )
         logger.info(f"AI response generated: {ai_response}")
         

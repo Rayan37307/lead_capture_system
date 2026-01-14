@@ -1,6 +1,6 @@
 # Facebook Messenger Integration Guide
 
-This guide provides a comprehensive overview of how to integrate Facebook Messenger into your application, focusing on setting up a basic bot to interact with users.
+This guide provides a comprehensive overview of how to integrate Facebook Messenger into your application, focusing on setting up a bot with multi-tenant support and product search functionality.
 
 ## Table of Contents
 1.  [Introduction](#1-introduction)
@@ -14,15 +14,17 @@ This guide provides a comprehensive overview of how to integrate Facebook Messen
     *   [3.6 Generate a Page Access Token](#36-generate-a-page-access-token)
     *   [3.7 Implement Your Webhook Endpoint (Backend)](#37-implement-your-webhook-endpoint-backend)
     *   [3.8 Subscribe Your App to the Page](#38-subscribe-your-app-to-the-page)
-4.  [Testing Your Integration](#4-testing-your-integration)
-5.  [Going Live](#5-going-live)
-6.  [Conclusion and Next Steps](#6-conclusion-and-next-steps)
+4.  [Multi-Tenant Configuration](#4-multi-tenant-configuration)
+5.  [Product Search Integration](#5-product-search-integration)
+6.  [Testing Your Integration](#6-testing-your-integration)
+7.  [Going Live](#7-going-live)
+8.  [Conclusion and Next Steps](#8-conclusion-and-next-steps)
 
 ---
 
 ## 1. Introduction
 
-Facebook Messenger is a powerful platform for direct communication with your audience. Integrating Messenger allows you to build chatbots, provide customer support, send automated notifications, and much more. This guide will walk you through the essential steps to connect your application with the Messenger platform.
+Facebook Messenger is a powerful platform for direct communication with your audience. Our integration allows you to build advanced chatbots with multi-tenant support and product search capabilities. This guide will walk you through the essential steps to connect your application with the Messenger platform.
 
 ## 2. Prerequisites
 
@@ -32,7 +34,8 @@ Before you begin, ensure you have the following:
 *   A **Facebook Page**: Your bot will be linked to a specific Facebook Page.
 *   A **Facebook Developer Account**: You'll need access to the Facebook Developer Dashboard.
 *   A **Server/Hosting Environment**: To host your webhook endpoint (e.g., a simple web server with a public URL). Tools like `ngrok` can be useful for local development and testing.
-*   **Basic Programming Knowledge**: Familiarity with a web framework (e.g., Flask, Node.js Express) will be helpful for implementing the webhook.
+*   **Basic Programming Knowledge**: Familiarity with a web framework (e.g., FastAPI, Flask, Node.js Express) will be helpful for implementing the webhook.
+*   **Tenant ID**: You must have a valid tenant ID for your multi-tenant setup.
 
 ## 3. Step-by-Step Integration
 
@@ -69,7 +72,7 @@ Webhooks are how Facebook tells your application when a user sends a message or 
 
 1.  In your app dashboard, navigate to "Messenger" -> "Settings".
 2.  Scroll down to the "Webhooks" section and click "Add Callback URL".
-3.  **Callback URL**: This is the public URL of your server endpoint that will receive updates from Facebook. During development, you can use `ngrok` to expose your local server to the internet (e.g., `https://your-ngrok-url.ngrok.io/webhook`).
+3.  **Callback URL**: This is the public URL of your server endpoint that will receive updates from Facebook. During development, you can use `ngrok` to expose your local server to the internet (e.g., `https://your-ngrok-url.ngrok.io/api/v1/messenger/` for single webhook approach or `https://your-ngrok-url.ngrok.io/api/v1/messenger/{tenant_id}` for tenant-specific approach).
 4.  **Verify Token**: This is a string you define. Facebook will send this token back to your endpoint during the verification process. Your endpoint needs to return this token to confirm it's legitimate. **Keep this token secret!**
 5.  Click "Verify and Save".
 
@@ -84,76 +87,31 @@ Your application needs a Page Access Token to send messages back to users throug
 
 ### 3.7 Implement Your Webhook Endpoint (Backend)
 
+Our system provides two approaches for Facebook Messenger integration with multi-tenant support and product search capabilities:
+
+**Approach 1: Single Webhook with Tenant Mapping**
+- Endpoint: `/api/v1/messenger/`
+- Uses a single webhook URL for all tenants
+- Automatically determines tenant based on Facebook Page ID
+- Requires mapping Facebook Page IDs to tenant IDs
+
+**Approach 2: Tenant-Specific Webhooks** 
+- Endpoint: `/api/v1/messenger/{tenant_id}`
+- Separate webhook URL for each tenant
+- Explicit tenant ID in the URL path
+
 Your server needs to handle two types of requests from Facebook:
 
 1.  **Webhook Verification (GET request)**: When you set up the webhook, Facebook sends a `GET` request to your `Callback URL` with `hub.mode`, `hub.challenge`, and `hub.verify_token` parameters. Your endpoint must:
     *   Check if `hub.mode` is `subscribe`.
     *   Check if `hub.verify_token` matches your secret `Verify Token` from Step 3.5.
     *   If both are true, return the `hub.challenge` value.
-2.  **Receiving Messages (POST request)**: Once verified, Facebook sends `POST` requests to your `Callback URL` with message payloads when users interact with your page. Your endpoint needs to:
-    *   Parse the incoming JSON payload.
-    *   Extract message details (sender ID, message text).
-    *   Process the message (e.g., respond with a predefined text, call an AI service).
-    *   Send a response back to the user using the Facebook Graph API (using your Page Access Token).
-
-**Example (Python Flask):**
-
-```python
-from flask import Flask, request
-import json
-import requests
-
-app = Flask(__name__)
-
-# Replace with your actual values
-VERIFY_TOKEN = "YOUR_VERIFY_TOKEN"
-PAGE_ACCESS_TOKEN = "YOUR_PAGE_ACCESS_TOKEN"
-
-@app.route("/webhook", methods=["GET"])
-def webhook_verify():
-    if request.args.get("hub.mode") == "subscribe" and \
-       request.args.get("hub.verify_token") == VERIFY_TOKEN:
-        print("Webhook verified!")
-        return request.args.get("hub.challenge"), 200
-    else:
-        return "Verification token mismatch", 403
-
-@app.route("/webhook", methods=["POST"])
-def webhook_receive():
-    data = request.get_json()
-    print("Received webhook data:", json.dumps(data, indent=2))
-
-    if data["object"] == "page":
-        for entry in data["entry"]:
-            for messaging_event in entry["messaging"]:
-                sender_id = messaging_event["sender"]["id"]
-                if messaging_event.get("message"):
-                    message_text = messaging_event["message"]["text"]
-                    print(f"Received message from {sender_id}: {message_text}")
-                    send_message(sender_id, f"Echo: {message_text}")
-                elif messaging_event.get("postback"):
-                    # Handle postback events (e.g., button clicks)
-                    payload = messaging_event["postback"]["payload"]
-                    print(f"Received postback from {sender_id}: {payload}")
-                    send_message(sender_id, f"You clicked: {payload}")
-    return "ok", 200
-
-def send_message(recipient_id, message_text):
-    params = {"access_token": PAGE_ACCESS_TOKEN}
-    headers = {"Content-Type": "application/json"}
-    data = json.dumps({
-        "recipient": {"id": recipient_id},
-        "message": {"text": message_text}
-    })
-    r = requests.post("https://graph.facebook.com/v19.0/me/messages", params=params, headers=headers, data=data)
-    if r.status_code == 200:
-        print(f"Message sent to {recipient_id}: {message_text}")
-    else:
-        print(f"Error sending message: {r.status_code} - {r.text}")
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
-```
+2.  **Receiving Messages (POST request)**: Once verified, Facebook sends `POST` requests to your `Callback URL` with message payloads when users interact with your page. Our system handles:
+    *   Parsing the incoming JSON payload.
+    *   Extracting message details (sender ID, message text).
+    *   Processing the message with AI and product search capabilities.
+    *   Managing lead data with multi-tenant isolation.
+    *   Sending responses back to users.
 
 ### 3.8 Subscribe Your App to the Page
 
@@ -164,26 +122,80 @@ Finally, you need to tell Facebook which events your app should subscribe to for
 3.  Select the events you want to receive. For a basic bot, `messages` and `messaging_postbacks` are common starting points.
 4.  Click "Save".
 
-## 4. Testing Your Integration
+## 4. Multi-Tenant Configuration
 
-1.  **Set up `ngrok` (if developing locally):** Run `ngrok http 5000` (or your chosen port) to get a public URL for your local server. Update your Facebook webhook callback URL with this `ngrok` URL.
-2.  **Send a message:** As a user (who has a role in your Facebook App or is a test user for your app), go to your Facebook Page and send a message.
-3.  **Check your server logs:** You should see your server receiving the webhook event and sending a response.
-4.  **Check Messenger:** You should receive the bot's response in Messenger.
+Our system implements strict multi-tenant architecture with two configuration options:
 
-## 5. Going Live
+**Option 1: Single Webhook with Page-to-Tenant Mapping**
+*   **Configuration**: One webhook URL serves all tenants
+*   **Tenant Resolution**: System determines tenant based on Facebook Page ID
+*   **Setup**: Map Facebook Page IDs to tenant IDs in the system
+*   **URL**: `/api/v1/messenger/`
+
+**Option 2: Tenant-Specific Webhooks**
+*   **Configuration**: Separate webhook URL for each tenant
+*   **Tenant Resolution**: Tenant ID specified in URL path
+*   **Setup**: Configure separate webhook for each tenant
+*   **URL**: `/api/v1/messenger/{tenant_id}`
+
+**Common Features**:
+*   **Tenant Isolation**: Each tenant has separate data storage and product catalogs.
+*   **Database Files**: Each tenant has their own SQLite database file in `tenant_data/{tenant_id}.db`
+*   **Product Catalogs**: Each tenant has their own product JSON file in `data_center/{tenant_id}.json`
+*   **Data Privacy**: Tenants cannot access each other's data or product catalogs.
+
+## 5. Product Search Integration
+
+The bot includes advanced product search capabilities:
+
+*   **Fuzzy Search**: Uses fuzzy string matching to find relevant products even with typos or partial matches.
+*   **Natural Language Queries**: Users can search using phrases like "Show me CeraVe moisturizers" or "Find facial cleansers".
+*   **Multi-Category Search**: Searches across product names, descriptions, categories, and brands.
+*   **Rich Product Information**: Displays product names, prices, descriptions, and images in chat responses.
+*   **Tenant-Specific Catalogs**: Each tenant can only search within their own product catalog.
+
+## 6. Testing Your Integration
+
+**For Option 1: Single Webhook with Page-to-Tenant Mapping**
+1.  **Set up `ngrok` (if developing locally)**: Run `ngrok http 8000` (or your chosen port) to get a public URL for your local server. Update your Facebook webhook callback URL with this `ngrok` URL: `https://your-ngrok-url.ngrok.io/api/v1/messenger/`.
+2.  **Configure Environment Variables**: Ensure your `.env` file contains the required Facebook Messenger settings:
+   ```
+   FB_PAGE_ACCESS_TOKEN=your_page_access_token
+   FB_APP_SECRET=your_app_secret
+   FB_WEBHOOK_VERIFY_TOKEN=your_verify_token
+   ```
+3.  **Configure Page-to-Tenant Mapping**: Update the `get_tenant_for_page()` function in `messenger.py` to map your Facebook Page ID to your tenant ID.
+4.  **Send a message**: As a user (who has a role in your Facebook App or is a test user for your app), go to your Facebook Page and send a message.
+5.  **Check your server logs**: You should see your server receiving the webhook event and processing the message with AI and product search.
+6.  **Test Product Search**: Try sending product search queries like "Show me moisturizers" or "Find CeraVe products".
+7.  **Check Messenger**: You should receive the bot's intelligent response with relevant product information.
+
+**For Option 2: Tenant-Specific Webhooks**
+1.  **Set up `ngrok` (if developing locally)**: Run `ngrok http 8000` (or your chosen port) to get a public URL for your local server. Update your Facebook webhook callback URL with this `ngrok` URL, including your tenant ID: `https://your-ngrok-url.ngrok.io/api/v1/messenger/YOUR_TENANT_ID`.
+2.  **Configure Environment Variables**: Ensure your `.env` file contains the required Facebook Messenger settings:
+   ```
+   FB_PAGE_ACCESS_TOKEN=your_page_access_token
+   FB_APP_SECRET=your_app_secret
+   FB_WEBHOOK_VERIFY_TOKEN=your_verify_token
+   ```
+3.  **Send a message**: As a user (who has a role in your Facebook App or is a test user for your app), go to your Facebook Page and send a message.
+4.  **Check your server logs**: You should see your server receiving the webhook event and processing the message with AI and product search.
+5.  **Test Product Search**: Try sending product search queries like "Show me moisturizers" or "Find CeraVe products".
+6.  **Check Messenger**: You should receive the bot's intelligent response with relevant product information.
+
+## 7. Going Live
 
 Before your bot can interact with anyone other than developers and test users, your app needs to undergo App Review by Facebook. You'll need to submit your app for review for the `pages_messaging` permission (and any other permissions your bot uses) and provide a clear explanation and demo of its functionality.
 
-## 6. Conclusion and Next Steps
+## 8. Conclusion and Next Steps
 
-You've successfully integrated a basic Facebook Messenger bot! From here, you can expand its capabilities by:
+You've successfully integrated a Facebook Messenger bot with multi-tenant support and product search capabilities! From here, you can expand its capabilities by:
 
-*   **Natural Language Processing (NLP):** Integrate with services like Dialogflow, wit.ai, or custom AI models to understand user intent.
-*   **Rich Media:** Send images, videos, quick replies, and structured messages (templates).
-*   **Persistent Menu:** Add a persistent menu to your bot's conversation for easy navigation.
-*   **User Profiles:** Fetch user profile information (name, profile picture) to personalize interactions.
-*   **Database Integration:** Store user data, conversation history, and more.
-*   **Handover Protocol:** Implement the handover protocol for seamless transitions between bot and human agents.
+*   **Custom AI Prompts**: Customize the AI system prompts to match your brand voice.
+*   **Rich Media**: Send images, videos, quick replies, and structured messages (templates).
+*   **User Profiles**: Fetch user profile information (name, profile picture) to personalize interactions.
+*   **Analytics**: Monitor conversation metrics and lead generation performance.
+*   **Workflow Automation**: Set up custom workflows for different lead intents (HOT, WARM, COLD).
+*   **Google Sheets Integration**: Enable automatic lead synchronization to Google Sheets.
 
-This integration opens up a world of possibilities for engaging with your audience directly on Messenger.
+This integration opens up a world of possibilities for engaging with your audience directly on Messenger with advanced product search and multi-tenant capabilities.
